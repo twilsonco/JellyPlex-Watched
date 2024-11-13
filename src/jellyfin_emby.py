@@ -2,7 +2,7 @@
 
 import traceback, os
 from math import floor
-from typing import Literal
+from typing import Any, Literal
 from dotenv import load_dotenv
 import requests
 from packaging.version import parse, Version
@@ -15,6 +15,7 @@ from src.functions import (
     str_to_bool,
 )
 from src.library import generate_library_guids_dict
+from src.custom_types import UsersWatched
 
 load_dotenv(override=True)
 
@@ -101,10 +102,12 @@ class JellyfinEmby:
         query: str,
         query_type: Literal["get", "post"],
         identifiers: dict[str, str] | None = None,
-        json: dict | None = None,
-    ) -> dict | list[dict]:
+        json: dict[str, float] | None = None,
+    ) -> dict[str, Any] | list[dict[str, Any]] | None:
         try:
-            results = None
+            results: (
+                dict[str, list[Any] | dict[str, str]] | list[dict[str, Any]] | None
+            ) = None
 
             if query_type == "get":
                 response = self.session.get(
@@ -140,7 +143,7 @@ class JellyfinEmby:
                     raise Exception("Query result is not of type list or dict")
 
             # append identifiers to results
-            if identifiers:
+            if identifiers and results:
                 results["Identifiers"] = identifiers
 
             return results
@@ -158,13 +161,13 @@ class JellyfinEmby:
         try:
             query_string = "/System/Info/Public"
 
-            response: dict = self.query(query_string, "get")
+            response: dict[str, Any] = self.query(query_string, "get")
 
             if response:
                 if name_only:
-                    return response.get("ServerName")
+                    return response["ServerName"]
                 elif version_only:
-                    return parse(response.get("Version"))
+                    return parse(response["Version"])
 
                 return f"{self.server_type} {response.get('ServerName')}: {response.get('Version')}"
             else:
@@ -176,15 +179,16 @@ class JellyfinEmby:
 
     def get_users(self) -> dict[str, str]:
         try:
-            users = {}
+            users: dict[str, str] = {}
 
             query_string = "/Users"
-            response = self.query(query_string, "get")
+            response: list[dict[str, str | bool]] = self.query(query_string, "get")
 
             # If response is not empty
             if response:
                 for user in response:
-                    users[user["Name"]] = user["Id"]
+                    if isinstance(user["Name"], str) and isinstance(user["Id"], str):
+                        users[user["Name"]] = user["Id"]
 
             return users
         except Exception as e:
@@ -421,9 +425,11 @@ class JellyfinEmby:
             logger(traceback.format_exc(), 2)
             return {}
 
-    def get_watched(self, users, sync_libraries):
+    def get_watched(
+        self, users: dict[str, str], sync_libraries: list[str]
+    ) -> UsersWatched:
         try:
-            users_watched = {}
+            users_watched: UsersWatched = {}
             watched = []
 
             for user_name, user_id in users.items():
@@ -437,7 +443,7 @@ class JellyfinEmby:
                     if library_title not in sync_libraries:
                         continue
 
-                    identifiers = {
+                    identifiers: dict[str, str] = {
                         "library_id": library_id,
                         "library_title": library_title,
                     }
@@ -454,8 +460,8 @@ class JellyfinEmby:
                     if len(library["Items"]) == 0:
                         continue
 
-                    library_id = library["Identifiers"]["library_id"]
-                    library_title = library["Identifiers"]["library_title"]
+                    library_id: str = library["Identifiers"]["library_id"]
+                    library_title: str = library["Identifiers"]["library_title"]
 
                     # Get all library types excluding "Folder"
                     types = set(
