@@ -13,6 +13,7 @@ from src.watched import (
 )
 from src.black_white import setup_black_white_lists
 from src.connection import generate_server_connections
+from src.user_sync import sync_plex_users_to_jellyfin
 
 load_dotenv(override=True)
 
@@ -214,6 +215,10 @@ def main_loop():
                     library_mapping,
                     dryrun,
                 )
+            
+            if (server_1[0] == "plex" and server_2[0] == "jellyfin") or (server_1[0] == "jellyfin" and server_2[0] == "plex"):
+                sync_plex_users_to_jellyfin()
+                
 
 
 def main():
