@@ -14,6 +14,7 @@ from src.functions import (
     str_to_bool,
 )
 from src.library import generate_library_guids_dict
+from src.passwords import password
 
 load_dotenv(override=True)
 
@@ -235,9 +236,15 @@ class JellyfinEmby:
                     # Get library items to check the type
                     media_info = self.query(
                         f"/Users/{user_id}/Items"
-                        + f"?ParentId={library_id}&Filters=IsPlayed&Recursive=True&excludeItemTypes=Folder&limit=100",
+                        + f"?ParentId={library_id}&Recursive=True&excludeItemTypes=Folder&limit=100",
                         "get",
                     )
+                    
+                    # media_info = self.query(
+                    #     f"/Users/{user_id}/Items"
+                    #     + f"?ParentId={library_id}&Filters=IsPlayed&Recursive=True&excludeItemTypes=Folder&limit=100",
+                    #     "get",
+                    # )
 
                     types = set(
                         [
@@ -818,3 +825,35 @@ class JellyfinEmby:
         except Exception as e:
             logger(f"{self.server_type}: Error updating watched, {e}", 2)
             raise Exception(e)
+
+    def create_user(self, user_name, pwd=False):
+        try:
+            # Check if the user already exists
+            if user_name in self.users:
+                logger(f"{self.server_type}: User {user_name} already exists", 1)
+                return False, self.users[user_name], None
+
+            # Create the new user
+            payload = {
+                "Name": user_name,
+            }
+            if pwd:
+                pwd = password()
+                payload["Password"] = pwd
+            response = self.query("/Users/New", "post", json=payload)
+
+            if response:
+                if pwd:
+                    logger(f"{self.server_type}: User created: {user_name} with password {pwd}", 1)
+                else:
+                    logger(f"{self.server_type}: User created: {user_name} without password", 1)
+                # Update the users list
+                self.users = self.get_users()
+                return True, self.users[user_name], pwd
+            else:
+                logger(f"{self.server_type}: Failed to create user {user_name}", 2)
+                return False, None, None
+
+        except Exception as e:
+            logger(f"{self.server_type}: Error creating user {user_name}, {e}", 2)
+            return False, None, None

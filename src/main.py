@@ -148,6 +148,16 @@ def main_loop():
 
             logger(f"Server 1: {server_1[0].capitalize()}: {server_1[1].info()}", 0)
             logger(f"Server 2: {server_2[0].capitalize()}: {server_2[1].info()}", 0)
+            
+            # Sync Plex users to Jellyfin
+            if all(s[0] in ["plex", "jellyfin"] for s in [server_1, server_2]):
+                if server_1[0] == "plex":
+                    plex_server = server_1
+                    jelly_server = server_2
+                else:
+                    plex_server = server_2
+                    jelly_server = server_1
+                sync_plex_users_to_jellyfin(jelly_server)
 
             # Create users list
             logger("Creating users list", 1)
@@ -215,11 +225,6 @@ def main_loop():
                     library_mapping,
                     dryrun,
                 )
-            
-            if (server_1[0] == "plex" and server_2[0] == "jellyfin") or (server_1[0] == "jellyfin" and server_2[0] == "plex"):
-                sync_plex_users_to_jellyfin()
-                
-
 
 def main():
     run_only_once = str_to_bool(os.getenv("RUN_ONLY_ONCE", "False"))
