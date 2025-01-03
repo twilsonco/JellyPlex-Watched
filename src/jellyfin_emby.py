@@ -826,7 +826,7 @@ class JellyfinEmby:
             logger(f"{self.server_type}: Error updating watched, {e}", 2)
             raise Exception(e)
 
-    def create_user(self, user_name, pwd=False):
+    def create_user(self, user_name, use_pwd=False, pwd_str=""):
         try:
             # Check if the user already exists
             if user_name in self.users:
@@ -837,8 +837,9 @@ class JellyfinEmby:
             payload = {
                 "Name": user_name,
             }
-            if pwd:
-                pwd = password()
+            pwd = None
+            if use_pwd:
+                pwd = password() if not pwd_str else pwd_str
                 payload["Password"] = pwd
             response = self.query("/Users/New", "post", json=payload)
 

@@ -18,6 +18,7 @@ PLEX_URL = os.getenv("PLEX_BASEURL", "")
 PLEX_TOKEN = os.getenv("PLEX_TOKEN", "")
 PLEX_SERVER_NAME = os.getenv("PLEX_SERVERNAME", "")
 GENERATE_USER_PASSWORDS = str_to_bool(os.getenv("SYNC_PLEX_USERS_GENERATE_USER_PASSWORDS", "False"))
+DEFAULT_PASSWORD = os.getenv("SYNC_PLEX_USERS_DEFAULT_PASSWORD", "")
 
 plex = PlexServer(PLEX_URL, PLEX_TOKEN)
 
@@ -26,7 +27,7 @@ user_list = {}
 def convert_plex_to_jellyfin(username, server):
     logger("Adding " + username + " to Jellyfin...", 1)
     # succeeded, uid, pwd = make_jellyfin_user(username)
-    succeeded, uid, pwd = server[1].create_user(username, pwd=GENERATE_USER_PASSWORDS)
+    succeeded, uid, pwd = server[1].create_user(username, use_pwd=GENERATE_USER_PASSWORDS, pwd_str=DEFAULT_PASSWORD)
     if succeeded:
         user_list[username] = [uid, pwd]
     if succeeded:
