@@ -9,6 +9,57 @@ log_file = os.getenv("LOG_FILE", os.getenv("LOGFILE", "log.log"))
 mark_file = os.getenv("MARK_FILE", os.getenv("MARKFILE", "mark.log"))
 
 
+def rotate_log_file(file_path: str, max_size_mb: int = 10, max_files: int = 5):
+    """
+    Rotate log file if it exceeds max_size_mb.
+    Keeps max_files number of rotated files.
+    """
+    if not os.path.exists(file_path):
+        return
+    
+    # Check if file size exceeds limit
+    file_size_mb = os.path.getsize(file_path) / (1024 * 1024)
+    if file_size_mb < max_size_mb:
+        return
+    
+    # Rotate existing files
+    for i in range(max_files - 1, 0, -1):
+        old_file = f"{file_path}.{i}"
+        new_file = f"{file_path}.{i + 1}"
+        
+        if os.path.exists(old_file):
+            if i == max_files - 1:
+                # Remove the oldest file
+                os.remove(old_file)
+            else:
+                os.rename(old_file, new_file)
+    
+    # Move current file to .1
+    if os.path.exists(file_path):
+        os.rename(file_path, f"{file_path}.1")
+
+
+def write_to_log_file(file_path: str, content: str, max_size_mb: int = 10, max_files: int = 5):
+    """
+    Write content to log file with optional rotation.
+    """
+    if file_path is None:
+        return
+    
+    # Get rotation settings from environment variables or use defaults
+    if max_size_mb is None:
+        max_size_mb = int(os.getenv("LOG_MAX_SIZE_MB", str(max_size_mb)))
+    if max_files is None:
+        max_files = int(os.getenv("LOG_MAX_FILES", str(max_files)))
+
+    # Rotate if necessary
+    rotate_log_file(file_path, max_size_mb, max_files)
+    
+    # Write content
+    with open(file_path, "a", encoding="utf-8") as file:
+        file.write(content + "\n")
+
+
 def logger(message: str, log_type=0):
     debug = str_to_bool(os.getenv("DEBUG", "False"))
     debug_level = os.getenv("DEBUG_LEVEL", "info").lower()
@@ -35,8 +86,7 @@ def logger(message: str, log_type=0):
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         timestamped_output = f"{timestamp} {output}"
         print(timestamped_output)
-        with open(f"{log_file}", "a", encoding="utf-8") as file:
-            file.write(timestamped_output + "\n")
+        write_to_log_file(log_file, timestamped_output)
 
 
 def log_marked(
@@ -61,8 +111,7 @@ def log_marked(
         output += f"/{duration}"
 
     timestamped_output = f"{timestamp} {output}"
-    with open(f"{mark_file}", "a", encoding="utf-8") as file:
-        file.write(timestamped_output + "\n")
+    write_to_log_file(mark_file, timestamped_output)
 
 
 # Reimplementation of distutils.util.strtobool due to it being deprecated
