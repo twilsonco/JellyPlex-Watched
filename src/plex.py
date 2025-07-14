@@ -462,7 +462,9 @@ class Plex:
                 logger(f"Plex: Failed to login, Error: {e}", 2)
             raise Exception(e)
 
-    def info(self) -> str:
+    def info(self, name_only: bool = False) -> str:
+        if name_only:
+            return f"Plex {self.plex.friendlyName}"
         return f"Plex {self.plex.friendlyName}: {self.plex.version}"
 
     def get_users(self):
