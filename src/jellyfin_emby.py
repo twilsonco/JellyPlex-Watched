@@ -29,6 +29,11 @@ def get_guids(server_type, item):
         logger(f"{server_type}: Name not found in {item.get('Id')}", 1)
         guids = {"title": None}
 
+    if item.get("Id"):
+        guids["Id"] = item["Id"]
+    else:
+        logger(f"{server_type}: Id not found in {item.get('Name')}", 1)
+
     if "ProviderIds" in item:
         guids.update({k.lower(): v for k, v in item["ProviderIds"].items()})
     else:

@@ -75,6 +75,7 @@ def get_guids(item: Union[Movie, Episode], completed=True):
 
     return {
         "title": item.title,
+        "guid": item.guid,
         "locations": (
             tuple([location.split("/")[-1] for location in item.locations])
             if generate_locations

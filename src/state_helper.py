@@ -61,27 +61,40 @@ def extract_item_status_from_watched(watched_data: Dict[str, Any]) -> Dict[str, 
     return items
 
 def _get_item_id(item: Dict[str, Any]) -> str:
-    """Extract a unique identifier for an item"""
-    # Try common GUID sources in order of preference
-    guid_sources = ["imdb", "tmdb", "tvdb", "guid"]
+    """Extract a unique identifier for an item using server-specific IDs"""
     
+    # Priority 1: Use server-specific unique identifiers
+    # Plex uses 'guid' field (e.g., "plex://movie/5d776b59ad5437001f79c6f8")
+    if "guid" in item and item["guid"]:
+        item_id = f"plex://{item['guid']}"
+        logger(f"Generated ID from Plex GUID: {item_id}", 3)
+        return item_id
+    
+    # Jellyfin/Emby uses 'Id' field (e.g., "123e4567-e89b-12d3-a456-426614174000")
+    if "Id" in item and item["Id"]:
+        item_id = f"jellyfin://{item['Id']}"  # Could also be emby:// but they're compatible
+        logger(f"Generated ID from Jellyfin/Emby ID: {item_id}", 3)
+        return item_id
+    
+    # Priority 2: Fall back to public catalog IDs (for compatibility)
+    guid_sources = ["imdb", "tmdb", "tvdb"]
     for source in guid_sources:
         if source in item and item[source]:
             item_id = f"{source}://{item[source]}"
-            logger(f"Generated ID from {source}: {item_id}", 3)
+            logger(f"Generated ID from {source} (fallback): {item_id}", 3)
             return item_id
     
-    # Fall back to title + location if no GUID
+    # Priority 3: Fall back to title + location if no IDs available
     if "title" in item and "locations" in item and item["locations"]:
         location = item["locations"][0] if item["locations"] else ""
         item_id = f"title://{item['title']}::{location}"
-        logger(f"Generated ID from title+location: {item_id}", 3)
+        logger(f"Generated ID from title+location (fallback): {item_id}", 3)
         return item_id
     
     # Last resort: just title
     if "title" in item:
         item_id = f"title://{item['title']}"
-        logger(f"Generated ID from title only: {item_id}", 3)
+        logger(f"Generated ID from title only (last resort): {item_id}", 3)
         return item_id
     
     logger(f"Could not generate ID for item: {item}", 2)
