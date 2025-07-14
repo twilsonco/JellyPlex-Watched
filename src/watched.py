@@ -2,11 +2,11 @@ import copy
 
 from src.functions import logger, search_mapping, contains_nested
 from src.library import generate_library_guids_dict
-from src.state_helper import extract_item_status_from_watched, create_cross_server_mapping
+from src.state_helper import _get_item_id
 
 
 def check_remove_entry(video, library, video_index, library_watched_list_2, state_tracker=None, 
-                        user=None, server_1_name=None, server_2_name=None):
+                      user=None, server_1_name=None, server_2_name=None):
     """
     Enhanced check_remove_entry that considers state tracking for unwatched sync
     """
@@ -21,21 +21,26 @@ def check_remove_entry(video, library, video_index, library_watched_list_2, stat
     
     # If state tracking is available, check for recent unwatched changes
     if state_tracker and user and server_1_name and server_2_name:
-        video_id = f"title://{video['title']}"  # Simple ID for now
         
-        # Check if this item was recently marked as unwatched on either server
-        recent_unwatched_s1 = state_tracker.get_recent_unwatched_items(user, server_1_name, 60)
-        recent_unwatched_s2 = state_tracker.get_recent_unwatched_items(user, server_2_name, 60)
+        # Generate proper item ID using the same logic as state tracking
+        video_id = _get_item_id(video)
         
-        # If item was recently unwatched on server 1, don't remove it (let it sync to server 2)
-        if any(video_id in item_id for item_id in recent_unwatched_s1.keys()):
-            logger(f"Not removing {video['title']} - recently marked unwatched on {server_1_name}", 1)
-            return False
+        if video_id:
+            # Check if this item was recently marked as unwatched on either server
+            recent_unwatched_s1 = state_tracker.get_recent_unwatched_items(user, server_1_name, 60)
+            recent_unwatched_s2 = state_tracker.get_recent_unwatched_items(user, server_2_name, 60)
             
-        # If item was recently unwatched on server 2, remove it (server 2 takes precedence)
-        if any(video_id in item_id for item_id in recent_unwatched_s2.keys()):
-            logger(f"Removing {video['title']} - recently marked unwatched on {server_2_name}", 1)
-            return True
+            # If item was recently unwatched on server 1, don't remove it (let it sync to server 2)
+            if video_id in recent_unwatched_s1:
+                logger(f"Not removing {video['title']} - recently marked unwatched on {server_1_name}", 1)
+                return False
+                
+            # If item was recently unwatched on server 2, remove it (server 2 takes precedence)
+            if video_id in recent_unwatched_s2:
+                logger(f"Removing {video['title']} - recently marked unwatched on {server_2_name}", 1)
+                return True
+        else:
+            logger(f"Could not generate item ID for {video.get('title', 'Unknown')}, using fallback logic", 3)
     
     # Original logic for standard cases
     if (completed_2 == completed_1) and (time_2 == time_1):

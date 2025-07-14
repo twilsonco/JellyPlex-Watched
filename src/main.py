@@ -15,7 +15,7 @@ from src.black_white import setup_black_white_lists
 from src.connection import generate_server_connections
 from src.user_sync import sync_plex_users_to_jellyfin
 from src.state_tracker import StateTracker
-from src.state_helper import extract_item_status_from_watched, create_cross_server_mapping, update_state_tracking
+from src.state_helper import update_state_tracking
 
 load_dotenv(override=True)
 
