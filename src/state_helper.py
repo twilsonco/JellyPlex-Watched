@@ -167,3 +167,86 @@ def _items_match(item1: Dict[str, Any], id1: str, item2: Dict[str, Any], id2: st
     
     logger(f"No match: '{title1}' vs '{title2}'", 3)
     return False
+
+def update_state_tracking(state_tracker, server_1_watched: Dict[str, Any], server_2_watched: Dict[str, Any], 
+                            server_1_name: str, server_2_name: str):
+    """
+    Update state tracking for all users across both servers
+    """
+    logger("Starting state tracking update", 1)
+    logger(f"Server 1 name: {server_1_name}", 1)
+    logger(f"Server 2 name: {server_2_name}", 1)
+    
+    # Extract current item status from watched data
+    all_users = set(list(server_1_watched.keys()) + list(server_2_watched.keys()))
+    logger(f"Processing state tracking for {len(all_users)} users: {list(all_users)}", 1)
+    
+    for user in all_users:
+        logger(f"Processing state tracking for user: {user}", 1)
+        
+        # Process server 1 items
+        if user in server_1_watched:
+            logger(f"Extracting items from {server_1_name} for user {user}", 1)
+            server_1_items = extract_item_status_from_watched({user: server_1_watched[user]})
+            logger(f"Found {len(server_1_items)} items on {server_1_name} for user {user}", 1)
+            
+            # Update state and detect changes for server 1
+            for item_id, item_info in server_1_items.items():
+                logger(f"Updating state for {server_1_name}: {item_info.get('title', 'Unknown')} ({item_id}) - {item_info['status']}", 3)
+                state_tracker.update_item_state(user, server_1_name, item_id, item_info["status"])
+        else:
+            logger(f"User {user} not found in {server_1_name} watched list", 1)
+        
+        # Process server 2 items
+        if user in server_2_watched:
+            logger(f"Extracting items from {server_2_name} for user {user}", 1)
+            server_2_items = extract_item_status_from_watched({user: server_2_watched[user]})
+            logger(f"Found {len(server_2_items)} items on {server_2_name} for user {user}", 1)
+            
+            # Update state and detect changes for server 2
+            for item_id, item_info in server_2_items.items():
+                logger(f"Updating state for {server_2_name}: {item_info.get('title', 'Unknown')} ({item_id}) - {item_info['status']}", 3)
+                state_tracker.update_item_state(user, server_2_name, item_id, item_info["status"])
+        else:
+            logger(f"User {user} not found in {server_2_name} watched list", 1)
+        
+        # Create cross-server mapping for items
+        if user in server_1_watched and user in server_2_watched:
+            logger(f"Creating cross-server mapping for user {user}", 1)
+            server_1_items = extract_item_status_from_watched({user: server_1_watched[user]})
+            server_2_items = extract_item_status_from_watched({user: server_2_watched[user]})
+            cross_mapping = create_cross_server_mapping(server_1_items, server_2_items)
+            
+            logger(f"Created {len(cross_mapping)} cross-server mappings for user {user}", 1)
+            
+            # Update cross-references in state
+            updated_s1_refs = 0
+            updated_s2_refs = 0
+            
+            for s1_id, s2_id in cross_mapping.items():
+                # Update server 1 item with server 2 reference
+                if state_tracker.get_item_state(user, server_1_name, s1_id):
+                    logger(f"Adding cross-reference: {server_1_name} {s1_id} -> {server_2_name} {s2_id}", 3)
+                    state_tracker.update_item_state(user, server_1_name, s1_id, 
+                                                   server_1_items[s1_id]["status"], s2_id)
+                    updated_s1_refs += 1
+                else:
+                    logger(f"No state found for {server_1_name} item {s1_id}, skipping cross-reference", 2)
+                    
+                # Update server 2 item with server 1 reference  
+                if state_tracker.get_item_state(user, server_2_name, s2_id):
+                    logger(f"Adding cross-reference: {server_2_name} {s2_id} -> {server_1_name} {s1_id}", 3)
+                    state_tracker.update_item_state(user, server_2_name, s2_id,
+                                                   server_2_items[s2_id]["status"], s1_id)
+                    updated_s2_refs += 1
+                else:
+                    logger(f"No state found for {server_2_name} item {s2_id}, skipping cross-reference", 2)
+            
+            logger(f"Updated cross-references for user {user}: {updated_s1_refs} on {server_1_name}, {updated_s2_refs} on {server_2_name}", 1)
+        else:
+            if user not in server_1_watched:
+                logger(f"User {user} not in {server_1_name}, skipping cross-server mapping", 1)
+            if user not in server_2_watched:
+                logger(f"User {user} not in {server_2_name}, skipping cross-server mapping", 1)
+    
+    logger("State tracking update completed", 1)

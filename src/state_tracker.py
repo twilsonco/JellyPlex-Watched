@@ -94,54 +94,6 @@ class StateTracker:
             logger(f"Set cross-server reference: {item_id} -> {other_server_id}", 3)
             
         self.state[user][server_name][item_id] = item_state
-        
-    def detect_status_changes(self, user: str, server_name: str, current_watched: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
-        """
-        Detect status changes by comparing current watched state with stored state
-        Returns dict of item_id -> {"old_status": str, "new_status": str, "changed": bool}
-        """
-        logger(f"Detecting status changes for {user}/{server_name}", 1)
-        changes = {}
-        
-        # Check stored state for changes
-        if user in self.state and server_name in self.state[user]:
-            stored_items = self.state[user][server_name]
-            logger(f"Checking {len(stored_items)} stored items for changes", 1)
-            
-            for item_id, stored_state in stored_items.items():
-                current_status = self._get_current_item_status(item_id, current_watched)
-                old_status = stored_state["status"]
-                
-                changes[item_id] = {
-                    "old_status": old_status,
-                    "new_status": current_status,
-                    "changed": old_status != current_status,
-                    "other_server_id": stored_state.get("other_server_id")
-                }
-                
-                if changes[item_id]["changed"]:
-                    logger(f"Status change detected: {item_id} {old_status} -> {current_status}", 1)
-        else:
-            logger(f"No stored state found for {user}/{server_name}", 1)
-        
-        # Add new items not in stored state
-        self._add_new_items_to_changes(current_watched, changes)
-        
-        logger(f"Found {len([c for c in changes.values() if c['changed']])} changed items out of {len(changes)} total", 1)
-        return changes
-    
-    def _get_current_item_status(self, item_id: str, current_watched: Dict[str, Any]) -> str:
-        """Extract current status for an item from watched data"""
-        # This will need to be implemented based on the structure of current_watched
-        # For now, return a placeholder
-        logger(f"Getting current status for item: {item_id}", 3)
-        return "unknown"
-    
-    def _add_new_items_to_changes(self, current_watched: Dict[str, Any], changes: Dict[str, Any]):
-        """Add new items that aren't in stored state to changes dict"""
-        # This will need to be implemented based on the structure of current_watched
-        logger("Adding new items to changes", 3)
-        pass
     
     def save(self):
         """Save current state to file"""
