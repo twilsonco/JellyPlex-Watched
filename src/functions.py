@@ -1,6 +1,7 @@
 import os
 from concurrent.futures import ThreadPoolExecutor
 from dotenv import load_dotenv
+from datetime import datetime
 
 load_dotenv(override=True)
 
@@ -11,7 +12,7 @@ mark_file = os.getenv("MARK_FILE", os.getenv("MARKFILE", "mark.log"))
 def logger(message: str, log_type=0):
     debug = str_to_bool(os.getenv("DEBUG", "False"))
     debug_level = os.getenv("DEBUG_LEVEL", "info").lower()
-
+    
     output = str(message)
     if log_type == 0:
         pass
@@ -31,9 +32,11 @@ def logger(message: str, log_type=0):
         output = None
 
     if output is not None:
-        print(output)
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        timestamped_output = f"{timestamp} {output}"
+        print(timestamped_output)
         with open(f"{log_file}", "a", encoding="utf-8") as file:
-            file.write(output + "\n")
+            file.write(timestamped_output + "\n")
 
 
 def log_marked(
@@ -48,6 +51,7 @@ def log_marked(
     if mark_file is None:
         return
 
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     output = f"{server_type}/{server_name}/{username}/{library}/{movie_show}"
 
     if episode:
@@ -56,8 +60,9 @@ def log_marked(
     if duration:
         output += f"/{duration}"
 
+    timestamped_output = f"{timestamp} {output}"
     with open(f"{mark_file}", "a", encoding="utf-8") as file:
-        file.write(output + "\n")
+        file.write(timestamped_output + "\n")
 
 
 # Reimplementation of distutils.util.strtobool due to it being deprecated
