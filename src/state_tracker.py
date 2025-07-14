@@ -1,13 +1,15 @@
 import os
 import json
 from datetime import datetime, timezone
-from typing import Dict, Any, Optional, Tuple
+from typing import Dict, Any, Optional
 from src.functions import logger
 
 class StateTracker:
     def __init__(self, config_dir: str = "/config"):
         self.config_dir = config_dir
-        self.state_file = os.path.join(config_dir, "watched_state.json")
+        default_state_file = os.path.join(config_dir, "watched_state.json")
+        self.state_file = os.getenv("WATCHED_STATE_FILE", default_state_file)
+        
         logger(f"Initializing StateTracker with config dir: {config_dir}", 1)
         logger(f"State file path: {self.state_file}", 1)
         self.state = self._load_state()

@@ -1,4 +1,4 @@
-from typing import Dict, Any, Tuple, List
+from typing import Dict, Any
 from src.functions import logger
 
 def extract_item_status_from_watched(watched_data: Dict[str, Any]) -> Dict[str, Dict[str, str]]:
