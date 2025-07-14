@@ -47,10 +47,8 @@ def write_to_log_file(file_path: str, content: str, max_size_mb: int = 10, max_f
         return
     
     # Get rotation settings from environment variables or use defaults
-    if max_size_mb is None:
-        max_size_mb = int(os.getenv("LOG_MAX_SIZE_MB", str(max_size_mb)))
-    if max_files is None:
-        max_files = int(os.getenv("LOG_MAX_FILES", str(max_files)))
+    max_size_mb = int(os.getenv("LOG_MAX_SIZE_MB", str(max_size_mb)))
+    max_files = int(os.getenv("LOG_MAX_FILES", str(max_files)))
 
     # Rotate if necessary
     rotate_log_file(file_path, max_size_mb, max_files)
