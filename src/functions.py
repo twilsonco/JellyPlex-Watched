@@ -65,11 +65,11 @@ def logger(message: str, log_type=0):
     output = str(message)
     if log_type == 0:
         pass
-    elif log_type == 1 and (debug_level in ("info", "debug")):
+    elif log_type == 1 and (debug and debug_level in ("info", "debug")):
         output = f"[INFO]: {output}"
     elif log_type == 2:
         output = f"[ERROR]: {output}"
-    elif log_type == 3 and (debug_level == "debug"):
+    elif log_type == 3 and (debug and debug_level == "debug"):
         output = f"[DEBUG]: {output}"
     elif log_type == 4:
         output = f"[WARNING]: {output}"

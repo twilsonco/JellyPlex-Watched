@@ -40,20 +40,20 @@ def convert_plex_to_jellyfin(username, server):
 
 def sync_plex_users_to_jellyfin(jelly_server):
     logger("Beginning user migration...", 0)
-    logger(f"Dry run: {DRY_RUN}", 0)
+    logger(f"Dry run: {DRY_RUN}", 1)
     if "" in [PLEX_URL, PLEX_TOKEN, PLEX_SERVER_NAME]:
         logger(f"Cannot sync users because Plex environment variables not set: {PLEX_URL = }, {PLEX_TOKEN = }, {PLEX_SERVER_NAME = }", 2)
         return
     for user in plex.myPlexAccount().users():
         if not user.username.strip():
-            logger("Skipping blank username...", 0)
+            logger("Skipping blank username...", 1)
             continue
         if user.username not in jelly_server[1].users.keys():
             logger(f"Adding {user.username} to Jellyfin...", 0)
             for s in user.servers:
                 if s.name == PLEX_SERVER_NAME:
                     if DRY_RUN:
-                        logger("DRY RUN: " + user.username + " would be added to Jellyfin.", 0)
+                        logger(user.username + " would be added to Jellyfin.", 6)
                         break
                     success, failure_reason = convert_plex_to_jellyfin(user.username, jelly_server)
                     if success:

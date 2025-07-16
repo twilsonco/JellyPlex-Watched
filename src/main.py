@@ -181,7 +181,7 @@ def main_loop():
                 library_mapping,
             )
 
-            logger("Creating watched lists", 1)
+            logger("Creating watched lists", 0)
             server_1_watched = server_1[1].get_watched(
                 server_1_users, server_1_libraries
             )
@@ -209,17 +209,17 @@ def main_loop():
             )
             
             # Save state (this updates previous_state for next comparison)
-            logger("Saving state tracker data to disk", 1)
+            logger("Saving state tracker data to disk", 0)
             state_tracker.save()
             logger("State tracking completed successfully", 1)
 
             # Standard cleanup (now simplified - no state tracking needed here)
-            logger("Cleaning Server 1 Watched", 1)
+            logger("Cleaning Server 1 Watched", 0)
             server_1_watched_filtered = cleanup_watched(
                 server_1_watched, server_2_watched, user_mapping, library_mapping
             )
 
-            logger("Cleaning Server 2 Watched", 1)
+            logger("Cleaning Server 2 Watched", 0)
             server_2_watched_filtered = cleanup_watched(
                 server_2_watched, server_1_watched, user_mapping, library_mapping
             )
@@ -228,11 +228,11 @@ def main_loop():
             
             # Sync unwatched items first (before regular watched sync)
             if server_1_unwatched_list:
-                logger(f"Marking items as unwatched on {server_1_name}", 1)
+                logger(f"Marking items as unwatched on {server_1_name}", 0)
                 server_1[1].mark_unwatched(server_1_unwatched_list, user_mapping, library_mapping, dryrun)
                 
             if server_2_unwatched_list:
-                logger(f"Marking items as unwatched on {server_2_name}", 1)
+                logger(f"Marking items as unwatched on {server_2_name}", 0)
                 server_2[1].mark_unwatched(server_2_unwatched_list, user_mapping, library_mapping, dryrun)
 
             logger(
