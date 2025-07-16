@@ -15,7 +15,7 @@ from src.black_white import setup_black_white_lists
 from src.connection import generate_server_connections
 from src.user_sync import sync_plex_users_to_jellyfin
 from src.state_tracker import StateTracker
-from src.state_helper import update_state_tracking
+from src.state_helper import update_state_tracking, get_unwatched_sync_lists
 
 load_dotenv(override=True)
 
@@ -199,36 +199,41 @@ def main_loop():
             logger("Tracking state changes", 1)
             server_1_name = server_1[1].info(name_only=True) if hasattr(server_1[1], 'info') else server_1[0]
             server_2_name = server_2[1].info(name_only=True) if hasattr(server_2[1], 'info') else server_2[0]
-            logger(f"Server 1 name: {server_1_name}", 1)
-            logger(f"Server 2 name: {server_2_name}", 1)
             
             # Update state tracking for all users
             update_state_tracking(state_tracker, server_1_watched, server_2_watched, 
                                 server_1_name, server_2_name)
             
-            # Save state
-            logger("Saving state tracker data to disk", 1)
-            state_tracker.save()
-            logger("State tracking completed successfully", 1)
+            server_1_unwatched_list, server_2_unwatched_list = get_unwatched_sync_lists(
+                state_tracker, server_1_name, server_2_name
+            )
             
-            # Save state
+            # Save state (this updates previous_state for next comparison)
             logger("Saving state tracker data to disk", 1)
             state_tracker.save()
             logger("State tracking completed successfully", 1)
 
+            # Standard cleanup (now simplified - no state tracking needed here)
             logger("Cleaning Server 1 Watched", 1)
             server_1_watched_filtered = cleanup_watched(
-                server_1_watched, server_2_watched, user_mapping, library_mapping,
-                state_tracker, server_1_name, server_2_name
+                server_1_watched, server_2_watched, user_mapping, library_mapping
             )
 
             logger("Cleaning Server 2 Watched", 1)
             server_2_watched_filtered = cleanup_watched(
-                server_2_watched, server_1_watched, user_mapping, library_mapping,
-                state_tracker, server_2_name, server_1_name
+                server_2_watched, server_1_watched, user_mapping, library_mapping
             )
             
             logger("Finished cleanup_watched", 1)
+            
+            # Sync unwatched items first (before regular watched sync)
+            if server_1_unwatched_list:
+                logger(f"Marking items as unwatched on {server_1_name}", 1)
+                server_1[1].mark_unwatched(server_1_unwatched_list, user_mapping, library_mapping, dryrun)
+                
+            if server_2_unwatched_list:
+                logger(f"Marking items as unwatched on {server_2_name}", 1)
+                server_2[1].mark_unwatched(server_2_unwatched_list, user_mapping, library_mapping, dryrun)
 
             logger(
                 f"server 1 watched that needs to be synced to server 2:\n{server_1_watched_filtered}",
@@ -239,6 +244,7 @@ def main_loop():
                 3,
             )
 
+            # Then sync regular watched items
             if should_sync_server(server_2[0], server_1[0]):
                 logger(f"Syncing {server_2[1].info()} -> {server_1[1].info()}", 3)
                 server_1[1].update_watched(

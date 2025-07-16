@@ -120,67 +120,68 @@ def _determine_status(status_dict: Dict[str, Any]) -> str:
         return "unwatched"
 
 def update_state_tracking(state_tracker, server_1_watched: Dict[str, Any], server_2_watched: Dict[str, Any], 
-                            server_1_name: str, server_2_name: str):
+                         server_1_name: str, server_2_name: str):
     """
-    Update state tracking for all users, detecting unwatched items
+    Update state tracking for all users and detect unwatched items
     """
     logger("Starting state tracking update with unwatched detection", 1)
     
     all_users = set(list(server_1_watched.keys()) + list(server_2_watched.keys()))
     
-    # Also check users that exist in state but might not be in current watched lists
-    if hasattr(state_tracker, 'state') and state_tracker.state:
-        state_users = set(state_tracker.state.keys())
+    # Also check users that exist in previous state
+    if hasattr(state_tracker, 'previous_state') and state_tracker.previous_state:
+        state_users = set(state_tracker.previous_state.keys())
         all_users.update(state_users)
     
     logger(f"Processing state tracking for {len(all_users)} users", 1)
     
+    # Build new state from current watched data
     for user in all_users:
-        # Process server 1
+        # Process server 1 items
         if user in server_1_watched:
-            # Get current watched items
             server_1_items = extract_item_status_from_watched({user: server_1_watched[user]})
-            current_item_ids = set(server_1_items.keys())
-            
-            # Update state for current items
             for item_id, item_info in server_1_items.items():
                 state_tracker.update_item_state(user, server_1_name, item_id, item_info["status"])
-            
-            # Check for items that were previously tracked but are now missing (unwatched)
-            if user in state_tracker.state and server_1_name in state_tracker.state[user]:
-                previous_item_ids = set(state_tracker.state[user][server_1_name].keys())
-                missing_items = previous_item_ids - current_item_ids
-                
-                for missing_item_id in missing_items:
-                    logger(f"Item {missing_item_id} no longer in watched list for {user}/{server_1_name}, marking as unwatched", 1)
-                    state_tracker.update_item_state(user, server_1_name, missing_item_id, "unwatched")
-        else:
-            # User not in current watched list - mark all their items as unwatched
-            if user in state_tracker.state and server_1_name in state_tracker.state[user]:
-                for item_id in state_tracker.state[user][server_1_name].keys():
-                    logger(f"User {user} not in {server_1_name} watched list, marking {item_id} as unwatched", 1)
-                    state_tracker.update_item_state(user, server_1_name, item_id, "unwatched")
         
-        # Process server 2 (same logic)
+        # Process server 2 items  
         if user in server_2_watched:
             server_2_items = extract_item_status_from_watched({user: server_2_watched[user]})
-            current_item_ids = set(server_2_items.keys())
-            
             for item_id, item_info in server_2_items.items():
                 state_tracker.update_item_state(user, server_2_name, item_id, item_info["status"])
-            
-            # Check for missing items
-            if user in state_tracker.state and server_2_name in state_tracker.state[user]:
-                previous_item_ids = set(state_tracker.state[user][server_2_name].keys())
-                missing_items = previous_item_ids - current_item_ids
-                
-                for missing_item_id in missing_items:
-                    logger(f"Item {missing_item_id} no longer in watched list for {user}/{server_2_name}, marking as unwatched", 1)
-                    state_tracker.update_item_state(user, server_2_name, missing_item_id, "unwatched")
-        else:
-            if user in state_tracker.state and server_2_name in state_tracker.state[user]:
-                for item_id in state_tracker.state[user][server_2_name].keys():
-                    logger(f"User {user} not in {server_2_name} watched list, marking {item_id} as unwatched", 1)
-                    state_tracker.update_item_state(user, server_2_name, item_id, "unwatched")
     
     logger("State tracking update completed", 1)
+
+def get_unwatched_sync_lists(state_tracker, server_1_name: str, server_2_name: str) -> tuple:
+    """
+    Generate lists of items that need to be marked as unwatched on each server
+    Returns: (items_to_unwatch_on_server_1, items_to_unwatch_on_server_2)
+    """
+    logger("Generating unwatched sync lists", 1)
+    
+    server_1_unwatched_list = {}  # Items to mark unwatched on server 1
+    server_2_unwatched_list = {}  # Items to mark unwatched on server 2
+    
+    # Get all users from both previous and current state
+    all_users = set()
+    if hasattr(state_tracker, 'previous_state'):
+        all_users.update(state_tracker.previous_state.keys())
+    all_users.update(state_tracker.state.keys())
+    
+    for user in all_users:
+        # Items unwatched on server 1 should be unwatched on server 2
+        server_1_unwatched = state_tracker.get_unwatched_items(user, server_1_name)
+        if server_1_unwatched:
+            if user not in server_2_unwatched_list:
+                server_2_unwatched_list[user] = {}
+            server_2_unwatched_list[user][server_1_name] = server_1_unwatched
+            logger(f"Will mark {len(server_1_unwatched)} items unwatched on {server_2_name} for user {user}", 1)
+        
+        # Items unwatched on server 2 should be unwatched on server 1  
+        server_2_unwatched = state_tracker.get_unwatched_items(user, server_2_name)
+        if server_2_unwatched:
+            if user not in server_1_unwatched_list:
+                server_1_unwatched_list[user] = {}
+            server_1_unwatched_list[user][server_2_name] = server_2_unwatched
+            logger(f"Will mark {len(server_2_unwatched)} items unwatched on {server_1_name} for user {user}", 1)
+    
+    return server_1_unwatched_list, server_2_unwatched_list

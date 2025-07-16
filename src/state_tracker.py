@@ -1,5 +1,6 @@
 import os
 import json
+import copy
 from datetime import datetime, timezone
 from typing import Dict, Any, Optional
 from src.functions import logger
@@ -13,6 +14,7 @@ class StateTracker:
         logger(f"Initializing StateTracker with config dir: {config_dir}", 1)
         logger(f"State file path: {self.state_file}", 1)
         self.state = self._load_state()
+        self.previous_state = copy.deepcopy(self.state)  # Store previous state for comparison
         
     def _load_state(self) -> Dict[str, Any]:
         """Load state from JSON file"""
@@ -96,24 +98,29 @@ class StateTracker:
         self.state[user][server_name][item_id] = item_state
     
     def save(self):
-        """Save current state to file"""
+        """Save current state to file and update previous state"""
         logger("Saving state tracker data", 1)
         self._save_state()
+        self.previous_state = copy.deepcopy(self.state)  # Update previous state after save
         
-    def get_recent_unwatched_items(self, user: str, server_name: str, 
-                                since_minutes: int = 60) -> Dict[str, Any]:
-        """Get items that were recently marked as unwatched"""
-        logger(f"Getting recent unwatched items for {user}/{server_name} (last {since_minutes} minutes)", 1)
-        recent_unwatched = {}
-        cutoff_time = datetime.now(timezone.utc).timestamp() - (since_minutes * 60)
+    def get_unwatched_items(self, user: str, server_name: str) -> Dict[str, Any]:
+        """Get items that were unwatched since last run (disappeared from watched list)"""
+        logger(f"Detecting unwatched items for {user}/{server_name}", 1)
+        unwatched_items = {}
         
-        if user in self.state and server_name in self.state[user]:
-            for item_id, item_state in self.state[user][server_name].items():
-                if item_state["status"] == "unwatched":
-                    last_checked = datetime.fromisoformat(item_state["last_checked"]).timestamp()
-                    if last_checked > cutoff_time:
-                        recent_unwatched[item_id] = item_state
-                        logger(f"Found recent unwatched item: {item_id}", 1)
-        
-        logger(f"Found {len(recent_unwatched)} recently unwatched items", 1)
-        return recent_unwatched
+        # Get items that were in previous state but not in current state
+        if (user in self.previous_state and 
+            server_name in self.previous_state[user] and
+            user in self.state and 
+            server_name in self.state[user]):
+            
+            previous_items = set(self.previous_state[user][server_name].keys())
+            current_items = set(self.state[user][server_name].keys())
+            missing_items = previous_items - current_items
+            
+            for item_id in missing_items:
+                unwatched_items[item_id] = self.previous_state[user][server_name][item_id]
+                logger(f"Item became unwatched: {item_id}", 1)
+                
+        logger(f"Found {len(unwatched_items)} unwatched items", 1)
+        return unwatched_items

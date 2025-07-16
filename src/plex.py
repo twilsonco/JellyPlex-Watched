@@ -297,7 +297,7 @@ def update_user_watched(user, user_plex, library, videos, dryrun):
         ) = generate_library_guids_dict(videos)
         logger(
             f"Plex: mark list\nShows: {videos_shows_ids}\nEpisodes: {videos_episodes_ids}\nMovies: {videos_movies_ids}",
-            1,
+            3,
         )
 
         library_videos = user_plex.library.section(library)

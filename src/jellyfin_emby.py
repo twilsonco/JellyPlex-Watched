@@ -515,7 +515,7 @@ class JellyfinEmby:
 
             logger(
                 f"{self.server_type}: mark list\nShows: {videos_shows_ids}\nEpisodes: {videos_episodes_ids}\nMovies: {videos_movies_ids}",
-                1,
+                3,
             )
 
             if videos_movies_ids:
