@@ -67,8 +67,10 @@ class StateTracker:
             logger(f"No state found for {user}/{server_name}/{item_id}", 3)
         return state
     
-    def update_item_state(self, user: str, server_name: str, item_id: str, 
-                            status: str, other_server_id: str = None):
+        def update_item_state(self, user: str, server_name: str, item_id: str, 
+                            status: str, other_server_id: str = None, title: str = None, 
+                            item_type: str = None, show_title: str = None, season: int = None, 
+                            episode: int = None, year: int = None):
         """Update state for an item"""
         logger(f"Updating state for {user}/{server_name}/{item_id}: {status}", 3)
         
@@ -86,9 +88,13 @@ class StateTracker:
         if old_state and old_state.get("status") != status:
             logger(f"Status change detected for {user}/{server_name}/{item_id}: {old_state['status']} -> {status}", 1)
         
+        # Generate human-readable title
+        readable_title = _generate_readable_title(title, item_type, show_title, season, episode, year)
+        
         item_state = {
             "status": status,
-            "last_checked": current_time
+            "last_checked": current_time,
+            "title": readable_title or title or "Unknown"
         }
         
         if other_server_id:
@@ -96,6 +102,25 @@ class StateTracker:
             logger(f"Set cross-server reference: {item_id} -> {other_server_id}", 3)
             
         self.state[user][server_name][item_id] = item_state
+    
+    def _generate_readable_title(title: str, item_type: str, show_title: str = None, 
+                                season: int = None, episode: int = None, year: int = None) -> str:
+        """Generate human-readable title based on item type"""
+        if not title:
+            return "Unknown"
+        
+        if item_type == "movie":
+            if year:
+                return f"{title} ({year})"
+            else:
+                return title
+        elif item_type == "episode" and show_title:
+            if season is not None and episode is not None:
+                return f"{show_title} - S{season:02d}E{episode:02d} - {title}"
+            else:
+                return f"{show_title} - {title}"
+        else:
+            return title
     
     def save(self):
         """Save current state to file and update previous state"""

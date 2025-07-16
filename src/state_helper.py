@@ -4,7 +4,7 @@ from src.functions import logger
 def extract_item_status_from_watched(watched_data: Dict[str, Any]) -> Dict[str, Dict[str, str]]:
     """
     Extract item IDs and their status from watched data structure
-    Returns: {item_id: {"status": "watched|unwatched|in_progress", "title": str}}
+    Returns: {item_id: {"status": "watched|unwatched|in_progress", "title": str, "type": str, ...}}
     """
     logger(f"Extracting item status from watched data for {len(watched_data)} users", 1)
     items = {}
@@ -27,7 +27,11 @@ def extract_item_status_from_watched(watched_data: Dict[str, Any]) -> Dict[str, 
                         items[item_id] = {
                             "status": status,
                             "title": movie.get("title", "Unknown"),
-                            "type": "movie"
+                            "type": "movie",
+                            "year": movie.get("year"),
+                            "show_title": None,
+                            "season": None,
+                            "episode": None
                         }
                         total_movies += 1
                         logger(f"Added movie: {movie.get('title', 'Unknown')} ({item_id}) - {status}", 3)
@@ -50,7 +54,10 @@ def extract_item_status_from_watched(watched_data: Dict[str, Any]) -> Dict[str, 
                                 "status": status,
                                 "title": episode.get("title", "Unknown"),
                                 "show_title": show_title,
-                                "type": "episode"
+                                "type": "episode",
+                                "season": episode.get("seasonNumber"),
+                                "episode": episode.get("episodeNumber"),
+                                "year": None
                             }
                             total_episodes += 1
                             logger(f"Added episode: {show_title} - {episode.get('title', 'Unknown')} ({item_id}) - {status}", 3)
@@ -59,6 +66,47 @@ def extract_item_status_from_watched(watched_data: Dict[str, Any]) -> Dict[str, 
     
     logger(f"Extracted {len(items)} total items: {total_movies} movies, {total_episodes} episodes", 1)
     return items
+
+def update_state_tracking(state_tracker, server_1_watched: Dict[str, Any], server_2_watched: Dict[str, Any], 
+                         server_1_name: str, server_2_name: str):
+    """
+    Update state tracking for all users (with enhanced title information)
+    """
+    logger("Starting state tracking update with enhanced titles", 1)
+    
+    all_users = set(list(server_1_watched.keys()) + list(server_2_watched.keys()))
+    logger(f"Processing state tracking for {len(all_users)} users", 1)
+    
+    for user in all_users:
+        # Process server 1 items
+        if user in server_1_watched:
+            server_1_items = extract_item_status_from_watched({user: server_1_watched[user]})
+            for item_id, item_info in server_1_items.items():
+                state_tracker.update_item_state(
+                    user, server_1_name, item_id, item_info["status"],
+                    title=item_info["title"],
+                    item_type=item_info["type"],
+                    show_title=item_info["show_title"],
+                    season=item_info["season"],
+                    episode=item_info["episode"],
+                    year=item_info["year"]
+                )
+        
+        # Process server 2 items  
+        if user in server_2_watched:
+            server_2_items = extract_item_status_from_watched({user: server_2_watched[user]})
+            for item_id, item_info in server_2_items.items():
+                state_tracker.update_item_state(
+                    user, server_2_name, item_id, item_info["status"],
+                    title=item_info["title"],
+                    item_type=item_info["type"],
+                    show_title=item_info["show_title"],
+                    season=item_info["season"],
+                    episode=item_info["episode"],
+                    year=item_info["year"]
+                )
+    
+    logger("Enhanced state tracking update completed", 1)
 
 def _get_item_id(item: Dict[str, Any]) -> str:
     """Extract a unique identifier for an item using server-specific IDs"""
@@ -98,7 +146,7 @@ def _get_item_id(item: Dict[str, Any]) -> str:
         return item_id
     
     logger(f"Could not generate ID for item: {item}", 2)
-    return None
+    return ""
 
 def _determine_status(status_dict: Dict[str, Any]) -> str:
     """Determine watch status from status dictionary"""
@@ -118,38 +166,6 @@ def _determine_status(status_dict: Dict[str, Any]) -> str:
     else:
         logger(f"Item not completed and minimal time ({time_watched}ms), returning unwatched", 3)
         return "unwatched"
-
-def update_state_tracking(state_tracker, server_1_watched: Dict[str, Any], server_2_watched: Dict[str, Any], 
-                         server_1_name: str, server_2_name: str):
-    """
-    Update state tracking for all users and detect unwatched items
-    """
-    logger("Starting state tracking update with unwatched detection", 1)
-    
-    all_users = set(list(server_1_watched.keys()) + list(server_2_watched.keys()))
-    
-    # Also check users that exist in previous state
-    if hasattr(state_tracker, 'previous_state') and state_tracker.previous_state:
-        state_users = set(state_tracker.previous_state.keys())
-        all_users.update(state_users)
-    
-    logger(f"Processing state tracking for {len(all_users)} users", 1)
-    
-    # Build new state from current watched data
-    for user in all_users:
-        # Process server 1 items
-        if user in server_1_watched:
-            server_1_items = extract_item_status_from_watched({user: server_1_watched[user]})
-            for item_id, item_info in server_1_items.items():
-                state_tracker.update_item_state(user, server_1_name, item_id, item_info["status"])
-        
-        # Process server 2 items  
-        if user in server_2_watched:
-            server_2_items = extract_item_status_from_watched({user: server_2_watched[user]})
-            for item_id, item_info in server_2_items.items():
-                state_tracker.update_item_state(user, server_2_name, item_id, item_info["status"])
-    
-    logger("State tracking update completed", 1)
 
 def get_unwatched_sync_lists(state_tracker, server_1_name: str, server_2_name: str) -> tuple:
     """
