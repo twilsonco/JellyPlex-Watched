@@ -536,10 +536,6 @@ class JellyfinEmby:
                     + "&isPlayed=false&Fields=ItemCounts,ProviderIds,MediaSources&IncludeItemTypes=Movie",
                     "get",
                 )
-                logger(
-                    f"{self.server_type}: Item search results:\n{jellyfin_search}",
-                    3,
-                )
                 for jellyfin_video in jellyfin_search["Items"]:
                     movie_status = get_video_status(
                         jellyfin_video, videos_movies_ids, videos
