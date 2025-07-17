@@ -268,6 +268,10 @@ def get_video_status(plex_search, video_ids, videos):
                             contains_nested(location.split("/")[-1], video["locations"])
                             is not None
                         ):
+                            logger(
+                                f"Plex: Found video {plex_search['title']} with location {location}",
+                                3,
+                            )
                             return video["status"]
 
         if generate_guids:
@@ -280,6 +284,10 @@ def get_video_status(plex_search, video_ids, videos):
                         for video in videos:
                             if guid_source in video.keys():
                                 if guid_id == video[guid_source]:
+                                    logger(
+                                        f"Plex: Found video {plex_search['title']} with guid {guid_id}",
+                                        3,
+                                    )
                                     return video["status"]
 
         return None
@@ -312,6 +320,23 @@ def update_user_watched(user, user_plex, library, videos, dryrun):
                         if not dryrun:
                             logger(msg, 5)
                             movies_search.markWatched()
+                        else:
+                            logger(msg, 6)
+
+                        log_marked(
+                            "Plex",
+                            user_plex.friendlyName,
+                            user.title,
+                            library,
+                            movies_search.title,
+                            None,
+                            None,
+                        )
+                    elif video_status.get("status") == "unwatched":  # Add this condition
+                        msg = f"Plex: {movies_search.title} as unwatched for {user.title} in {library}"
+                        if not dryrun:
+                            logger(msg, 5)
+                            movies_search.markUnwatched()  # Use markUnwatched() method
                         else:
                             logger(msg, 6)
 

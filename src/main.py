@@ -225,15 +225,6 @@ def main_loop():
             )
             
             logger("Finished cleanup_watched", 1)
-            
-            # Sync unwatched items first (before regular watched sync)
-            if server_1_unwatched_list:
-                logger(f"Marking items as unwatched on {server_1_name}", 0)
-                server_1[1].mark_unwatched(server_1_unwatched_list, user_mapping, library_mapping, dryrun)
-                
-            if server_2_unwatched_list:
-                logger(f"Marking items as unwatched on {server_2_name}", 0)
-                server_2[1].mark_unwatched(server_2_unwatched_list, user_mapping, library_mapping, dryrun)
 
             logger(
                 f"server 1 watched that needs to be synced to server 2:\n{server_1_watched_filtered}",

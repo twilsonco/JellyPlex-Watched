@@ -105,6 +105,7 @@ def get_video_status(server_video, videos_ids, videos):
                                 break
                         break
 
+    logger(f"Video status for {server_video.get('Name')} is {video_status}", 3)
     return video_status
 
 
@@ -131,7 +132,7 @@ class JellyfinEmby:
     def query(self, query, query_type, identifiers=None, json=None):
         try:
             results = None
-
+    
             if query_type == "get":
                 response = self.session.get(
                     self.baseurl + query, headers=self.headers, timeout=self.timeout
@@ -144,7 +145,7 @@ class JellyfinEmby:
                     results = None
                 else:
                     results = response.json()
-
+    
             elif query_type == "post":
                 response = self.session.post(
                     self.baseurl + query,
@@ -160,17 +161,27 @@ class JellyfinEmby:
                     results = None
                 else:
                     results = response.json()
-
-            if results is not None:
+            
+            elif query_type == "delete":  # Add DELETE support
+                response = self.session.delete(
+                    self.baseurl + query, headers=self.headers, timeout=self.timeout
+                )
+                if response.status_code not in [200, 204]:
+                    raise Exception(
+                        f"Query failed with status {response.status_code} {response.reason}"
+                    )
+                results = True  # DELETE successful
+    
+            if results is not None and query_type != "delete":
                 if not isinstance(results, list) and not isinstance(results, dict):
                     raise Exception("Query result is not of type list or dict")
-
+    
             # append identifiers to results
-            if identifiers:
+            if identifiers and query_type != "delete":
                 results["Identifiers"] = identifiers
-
+    
             return results
-
+    
         except Exception as e:
             logger(
                 f"{self.server_type}: Query {query_type} {query}\nResults {results}\n{e}",
@@ -525,6 +536,10 @@ class JellyfinEmby:
                     + "&isPlayed=false&Fields=ItemCounts,ProviderIds,MediaSources&IncludeItemTypes=Movie",
                     "get",
                 )
+                logger(
+                    f"{self.server_type}: Item search results:\n{jellyfin_search}",
+                    3,
+                )
                 for jellyfin_video in jellyfin_search["Items"]:
                     movie_status = get_video_status(
                         jellyfin_video, videos_movies_ids, videos
@@ -542,7 +557,25 @@ class JellyfinEmby:
                                 )
                             else:
                                 logger(msg, 6)
-
+                    
+                            log_marked(
+                                self.server_type,
+                                self.server_name,
+                                user_name,
+                                library,
+                                jellyfin_video.get("Name"),
+                            )
+                        elif movie_status.get("status") == "unwatched":  # Add this condition
+                            msg = f"{self.server_type}: {jellyfin_video.get('Name')} as unwatched for {user_name} in {library}"
+                            if not dryrun:
+                                logger(msg, 5)
+                                self.query(
+                                    f"/Users/{user_id}/PlayedItems/{jellyfin_video_id}",
+                                    "delete",  # Use DELETE to mark unwatched
+                                )
+                            else:
+                                logger(msg, 6)
+                    
                             log_marked(
                                 self.server_type,
                                 self.server_name,
@@ -671,6 +704,28 @@ class JellyfinEmby:
                                         self.query(
                                             f"/Users/{user_id}/PlayedItems/{jellyfin_episode_id}",
                                             "post",
+                                        )
+                                    else:
+                                        logger(msg, 6)
+
+                                    log_marked(
+                                        self.server_type,
+                                        self.server_name,
+                                        user_name,
+                                        library,
+                                        jellyfin_episode.get("SeriesName"),
+                                        jellyfin_episode.get("Name"),
+                                    )
+                                elif episode_status.get("status") == "unwatched":  # Add this condition
+                                    msg = (
+                                        f"{self.server_type}: {jellyfin_episode['SeriesName']} {jellyfin_episode['SeasonName']} Episode {jellyfin_episode.get('IndexNumber')} {jellyfin_episode.get('Name')}"
+                                        + f" as unwatched for {user_name} in {library}"
+                                    )
+                                    if not dryrun:
+                                        logger(msg, 5)
+                                        self.query(
+                                            f"/Users/{user_id}/PlayedItems/{jellyfin_episode_id}",
+                                            "delete",  # Use DELETE to mark unwatched
                                         )
                                     else:
                                         logger(msg, 6)
