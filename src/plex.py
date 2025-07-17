@@ -269,7 +269,7 @@ def get_video_status(plex_search, video_ids, videos):
                             is not None
                         ):
                             logger(
-                                f"Plex: Found video {plex_search['title']} with location {location}",
+                                f"Plex: Video status for {plex_search.title} with location {location} is {video['status']}",
                                 3,
                             )
                             return video["status"]
@@ -285,7 +285,7 @@ def get_video_status(plex_search, video_ids, videos):
                             if guid_source in video.keys():
                                 if guid_id == video[guid_source]:
                                     logger(
-                                        f"Plex: Found video {plex_search['title']} with guid {guid_id}",
+                                        f"Plex: Video status for {plex_search['title']} with guid {guid.id} is {video['status']}",
                                         3,
                                     )
                                     return video["status"]
