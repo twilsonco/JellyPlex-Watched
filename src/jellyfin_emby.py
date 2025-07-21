@@ -540,7 +540,10 @@ class JellyfinEmby:
                     movie_status = get_video_status(
                         jellyfin_video, videos_movies_ids, videos
                     )
-
+                    logger(
+                        f"{self.server_type}: Video status for {jellyfin_video.get('Name')} is {movie_status}",
+                        3,
+                    )
                     if movie_status:
                         jellyfin_video_id = jellyfin_video["Id"]
                         if movie_status["completed"]:
@@ -687,7 +690,10 @@ class JellyfinEmby:
                             episode_status = get_video_status(
                                 jellyfin_episode, videos_episodes_ids, episode_videos
                             )
-
+                            logger(
+                                f"{self.server_type}: Video status for {jellyfin_episode.get('Name')} is {episode_status}",
+                                3,
+                            )
                             if episode_status:
                                 jellyfin_episode_id = jellyfin_episode["Id"]
                                 if episode_status["completed"]:

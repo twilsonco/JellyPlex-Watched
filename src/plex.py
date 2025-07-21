@@ -314,6 +314,10 @@ def update_user_watched(user, user_plex, library, videos, dryrun):
                 video_status = get_video_status(
                     movies_search, videos_movies_ids, videos
                 )
+                logger(
+                    f"Plex: Video status for {movies_search.title} is {video_status}",
+                    3,
+                )
                 if video_status:
                     if video_status["completed"]:
                         msg = f"Plex: {movies_search.title} as watched for {user.title} in {library}"
@@ -380,6 +384,10 @@ def update_user_watched(user, user_plex, library, videos, dryrun):
                     for episode_search in show_search.episodes():
                         video_status = get_video_status(
                             episode_search, videos_episodes_ids, episode_videos
+                        )
+                        logger(
+                            f"Plex: Video status for {episode_search.title} is {video_status}",
+                            3,
                         )
                         if video_status:
                             if video_status["completed"]:
